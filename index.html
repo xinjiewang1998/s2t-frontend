@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Speech-to-Text</title>
+    <style>
+        html, body {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech-to-Text</h1>
+        <div>
+            <button id="startRecording">Start Recording</button>
+            <button id="stopRecording" disabled>Stop Recording</button>
+            <p id="result"></p>
+        </div>
+    </div>
+
+    <script>
+        const startRecordingButton = document.getElementById('startRecording');
+        const stopButton = document.getElementById('stopRecording');
+        const resultDisplay = document.getElementById('result');
+        let mediaRecorder;
+
+        startRecordingButton.addEventListener('click', async () => {
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                let audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'audio.wav');
+
+                    
+                        const response =  await fetch('http://localhost:8000/speech-to-text', {
+                            method: 'POST',
+                            body: formData,
+                        })
+                        // if (response.ok){
+                        //     console.log(response.body)   
+                        // }
+                        console.log(response)
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log(data)
+                            resultDisplay.textContent = data.text;
+                        } else {
+                            resultDisplay.textContent = 'Error converting speech to text';
+                        }
+                    
+                };
+
+                mediaRecorder.start();
+                console.log("record start")
+                startRecordingButton.disabled = true;
+                stopButton.disabled = false;
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                resultDisplay.textContent = 'Error accessing microphone';
+            }
+            stopButton.addEventListener('click', () => {
+                console.log("record stoped")
+                mediaRecorder.stop();
+                startRecordingButton.disabled = false;
+                stopButton.disabled = true;
+            });
+        });
+    </script>
+</body>
+</html>
